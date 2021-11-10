@@ -17,7 +17,7 @@ canvas = pygame.Surface((params.window_dimension, params.window_dimension))
 canvas.fill(DARK_BLUE)
 
 
-def render(r, centre): #, surface
+def render(r, centre):
     x_pos = 0
     y_pos = 0
     increment = convert.find_pixel_increment(r)
@@ -27,7 +27,6 @@ def render(r, centre): #, surface
         while x_pos <= params.window_dimension:
             count = mand.test_point(z)
             pygame.draw.circle(canvas, (255 - colour_increment * count, 255 - colour_increment * count, 255 - (12.7 / params.max_iterate_count) * count), (x_pos, y_pos), 1)
-            #pygame.draw.circle(canvas, (255,255,255),(x_pos,y_pos),1)
             z += increment + 0 * 1j
             x_pos += 1
         x_pos = 0
@@ -50,4 +49,4 @@ while run:
     # update window and draw
     render(params.graph_radius, params.window_centre) #, display_surface
     # Clamp FPS
-    clock.tick_busy_loop(30)
+    clock.tick_busy_loop(15)
