@@ -3,6 +3,8 @@ import time
 import mandelbrot as mand
 import convert
 import parameters as params
+import numpy as np
+
 #Initialise
 DARK_BLUE = (3,   5,  54)
 WHITE = (255, 255, 255)
@@ -15,6 +17,7 @@ pygame.display.set_caption("Mandelbrot Set")
 # Create canvas for drawing
 canvas = pygame.Surface((params.window_dimension, params.window_dimension))
 canvas.fill(DARK_BLUE)
+pixel_array = np.zeros(params.window_dimension * params.window_dimension * 3).reshape([params.window_dimension, params.window_dimension, 3])
 
 
 def render(r, centre):
@@ -23,17 +26,18 @@ def render(r, centre):
     increment = convert.find_pixel_increment(r)
     colour_increment = 225 / params.max_iterate_count
     z = complex(centre[0] - r, centre[1] + r)
-    while y_pos <= params.window_dimension:
-        while x_pos <= params.window_dimension:
+    while y_pos < params.window_dimension:
+        while x_pos < params.window_dimension:
             count = mand.test_point(z)
-            pygame.draw.circle(canvas, (255 - colour_increment * count, 255 - colour_increment * count, 255 - (12.7 / params.max_iterate_count) * count), (x_pos, y_pos), 1)
+            #pygame.draw.circle(canvas, (255 - colour_increment * count, 255 - colour_increment * count, 255 - (12.7 / params.max_iterate_count) * count), (x_pos, y_pos), 1)
+            pixel_array[x_pos][y_pos] = (255 - colour_increment * count, 255 - colour_increment * count, 255 - (12.7 / params.max_iterate_count) * count)
             z += increment + 0 * 1j
             x_pos += 1
         x_pos = 0
         z = complex(centre[0] - r, z.imag)
         z -= 0 + increment * 1j
         y_pos += 1
-    window.blit(canvas, (0, 0))
+    pygame.surfarray.blit_array(window, pixel_array)
     pygame.display.flip()
 
 
