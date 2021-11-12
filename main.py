@@ -4,53 +4,50 @@ import mandelbrot as mand
 import convert
 import parameters as params
 import numpy as np
+from matplotlib import pyplot as plt
 
 #Initialise
 DARK_BLUE = (3,   5,  54)
 WHITE = (255, 255, 255)
+colour_increment = 225 / params.max_iterate_count
 window_surface = pygame.HWSURFACE|pygame.DOUBLEBUF
 
 pygame.init()
 window = pygame.display.set_mode((params.window_dimension, params.window_dimension))
 pygame.display.set_caption("Mandelbrot Set")
-
 # Create canvas for drawing
 canvas = pygame.Surface((params.window_dimension, params.window_dimension))
-canvas.fill(DARK_BLUE)
-pixel_array = np.zeros(params.window_dimension * params.window_dimension * 3).reshape([params.window_dimension, params.window_dimension, 3])
 
 
-def render(r, centre):
-    x_pos = 0
-    y_pos = 0
-    increment = convert.find_pixel_increment(r)
-    colour_increment = 225 / params.max_iterate_count
-    z = complex(centre[0] - r, centre[1] + r)
-    while y_pos < params.window_dimension:
-        while x_pos < params.window_dimension:
-            count = mand.test_point(z)
-            #pygame.draw.circle(canvas, (255 - colour_increment * count, 255 - colour_increment * count, 255 - (12.7 / params.max_iterate_count) * count), (x_pos, y_pos), 1)
-            pixel_array[x_pos][y_pos] = (255 - colour_increment * count, 255 - colour_increment * count, 255 - (12.7 / params.max_iterate_count) * count)
-            z += increment + 0 * 1j
-            x_pos += 1
-        x_pos = 0
-        z = complex(centre[0] - r, z.imag)
-        z -= 0 + increment * 1j
-        y_pos += 1
-    pygame.surfarray.blit_array(window, pixel_array)
+def gen_matrix(real_axis, imaginary_axis):
+    M = np.zeros((real_axis.shape[0], imaginary_axis.shape[0]))
+    for i, number1 in enumerate(real_axis):
+        for j, number2 in enumerate(imaginary_axis):
+            M[i, j] = colour_increment * mand.test_point((complex(number1, number2)))
+    return M
+
+
+def render(matrix):
+    pygame.surfarray.blit_array(window, matrix)
     pygame.display.flip()
 
 
 # Initialisation
 clock = pygame.time.Clock()
 run = True
-while run:
+z = 0
+while True:
+    zoom_centre = (0, 1) # (real, imag)
+    zoom_radius = params.graph_radius-z
     # Handle Events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-
+    real_view_line = np.linspace(zoom_centre[0] - zoom_radius, zoom_centre[0] + zoom_radius, params.window_dimension)
+    imaginary_view_line = np.linspace(zoom_centre[1] - zoom_radius, zoom_centre[1] + zoom_radius, params.window_dimension)
+    M_new = gen_matrix(real_view_line, imaginary_view_line)
     # update window and draw
-    render(params.graph_radius, params.window_centre) #, display_surface
+    render(M_new) #, display_surface
     # Clamp FPS
-    clock.tick_busy_loop(15)
+    z += 0.1
+    clock.tick_busy_loop(60)
