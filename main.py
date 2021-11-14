@@ -1,53 +1,132 @@
 import pygame
-import time
 import mandelbrot as mand
-import convert
 import parameters as params
+import display as disp
 import numpy as np
-from matplotlib import pyplot as plt
+import time
+import random
 
-#Initialise
-DARK_BLUE = (3,   5,  54)
-WHITE = (255, 255, 255)
-colour_increment = 225 / params.max_iterate_count
-window_surface = pygame.HWSURFACE|pygame.DOUBLEBUF
+# Default to the mandlebrot set
+current_algorithm = mand.Algorithm.MANDELBROT
 
-pygame.init()
-window = pygame.display.set_mode((params.window_dimension, params.window_dimension))
-pygame.display.set_caption("Mandelbrot Set")
-# Create canvas for drawing
-canvas = pygame.Surface((params.window_dimension, params.window_dimension))
+# Define start and end complex bounds of the set
+start = None
+end = None
 
-
-def gen_matrix(real_axis, imaginary_axis):
-    M = np.zeros((real_axis.shape[0], imaginary_axis.shape[0]))
-    for i, number1 in enumerate(real_axis):
-        for j, number2 in enumerate(imaginary_axis):
-            M[i, j] = colour_increment * mand.test_point((complex(number1, number2)))
-    return M
+# zooming
+zooming = False
+recording = False
 
 
-def render(matrix):
-    pygame.surfarray.blit_array(window, matrix)
-    pygame.display.flip()
+# Wrapper to update the matrix and then render
+def update_matrix_and_render():
+    mand.update_matrix(current_algorithm, start, end)
+    disp.render()
+
+
+# Work out the new complex number range for the plot based on the location
+# the user clicked.  Then update the matrix and render
+def handle_mouse_click(pos):
+    global start, end
+
+    print("Redrawing...", pos)
+    start_time = time.time()
+    # Calculate the new start and end complex numbers based on the click position
+    click_position_as_complex_number = mand.calculate_position_as_complex(start, end, pos[0], pos[1])
+
+    cdiff = end - start
+
+    # Zoom in to a quarter of the view by default
+    scale_offset = cdiff * 0.25
+
+    start = click_position_as_complex_number - scale_offset
+    end = click_position_as_complex_number + scale_offset
+
+    # Generate the plot and redraw
+    update_matrix_and_render()
+    end_time = time.time()
+    print("Done...", end_time-start_time)
+    return start, end
+
+
+def infinite_zoom(rate, complex_centre=0+1j):
+    global start, end
+    start_time = time.time()
+    cdiff = end - start
+    scale_offset = cdiff * rate
+
+    start = complex_centre - scale_offset
+    end = complex_centre + scale_offset
+    # Generate the plot and redraw
+    update_matrix_and_render()
+    end_time = time.time()
+    print("Done...", end_time-start_time)
+    return start, end
+
+
+# Main game loop - keep looping until the user exits
+def main_loop():
+    global current_algorithm, zooming
+
+    # Render the original Matrix
+    update_matrix_and_render()
+
+    run = True
+    while run:
+        # Handle Events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    print("Changing palette")
+                    disp.build_and_set_palette(random.randrange(255))
+                elif event.key == pygame.K_b:
+                    print("Blue monochrome palette")
+                    disp.set_monochrome_palette()
+                elif event.key == pygame.K_k:
+                    print("Continuous palette")
+                    disp.set_continuous_palette()
+                elif event.key == pygame.K_r:
+                    print("Resetting")
+                    reset_coordinates()
+                    update_matrix_and_render()
+                elif event.key == pygame.K_m:
+                    print("Using Mandlebrot set")
+                    reset_coordinates()
+                    current_algorithm = mand.Algorithm.MANDLEBROT
+                    update_matrix_and_render()
+                elif event.key == pygame.K_j:
+                    print("Using Julia set")
+                    reset_coordinates()
+                    current_algorithm = mand.Algorithm.JULIA
+                    update_matrix_and_render()
+                elif event.key == pygame.K_z:
+                    zooming = not zooming
+                    print("Zooming: " + str(zooming))
+                elif event.key == pygame.K_w:
+                    zooming = not zooming
+                    disp.recording = not recording
+                    print("Zooming: " + str(zooming))
+            elif event.type == pygame.MOUSEBUTTONUP:
+                pos = pygame.mouse.get_pos()
+                handle_mouse_click(pos)
+        if zooming:
+            infinite_zoom(0.5)
+
+        clock.tick(15)
+
+
+def reset_coordinates():
+    global start, end
+    start = -2.0 + -1.0j
+    end = 1.0 + 1.0j
 
 
 # Initialisation
 clock = pygame.time.Clock()
-run = True
-z = 0
-while True:
-    zoom_centre = (0, 1) # (real, imag)
-    zoom_radius = params.graph_radius-z
-    # Handle Events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
-    real_view_line = np.linspace(zoom_centre[0] - zoom_radius, zoom_centre[0] + zoom_radius, params.window_dimension)
-    imaginary_view_line = np.linspace(zoom_centre[1] - zoom_radius, zoom_centre[1] + zoom_radius, params.window_dimension)
-    M_new = gen_matrix(real_view_line, imaginary_view_line)
-    # update window and draw
-    render(M_new) #, display_surface
-    # Clamp FPS
-    z += 0.1
-    clock.tick_busy_loop(60)
+disp.init_display()
+reset_coordinates()
+
+# enter the main loop until I click close
+main_loop()
